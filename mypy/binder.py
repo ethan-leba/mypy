@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 from collections import defaultdict
+from mypy.typeops import make_simplified_union
 
 from typing import Dict, List, Set, Iterator, Union, Optional, Tuple, cast
 from typing_extensions import DefaultDict
@@ -192,13 +193,18 @@ class ConditionalTypeBinder:
                 # know anything about key in at least one possible frame.
                 continue
 
+            frames_are_expanded_sum_type = current_value and is_same_type(
+                make_simplified_union(cast(List[Type], resulting_values)), current_value
+            )
+
             type = resulting_values[0]
             assert type is not None
             declaration_type = get_proper_type(self.declarations.get(key))
-            if isinstance(declaration_type, AnyType):
-                # At this point resulting values can't contain None, see continue above
-                if not all(is_same_type(type, cast(Type, t)) for t in resulting_values[1:]):
-                    type = AnyType(TypeOfAny.from_another_any, source_any=declaration_type)
+            # At this point resulting values can't contain None, see continue above
+            if (isinstance(declaration_type, AnyType) and
+                    not frames_are_expanded_sum_type and
+                    not all(is_same_type(type, cast(Type, t)) for t in resulting_values[1:])):
+                type = AnyType(TypeOfAny.from_another_any, source_any=declaration_type)
             else:
                 for other in resulting_values[1:]:
                     assert other is not None
