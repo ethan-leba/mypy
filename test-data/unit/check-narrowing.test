@@ -1073,3 +1073,35 @@ def f(t: Type[C]) -> None:
     else:
         reveal_type(t)  # N: Revealed type is "Type[__main__.C]"
     reveal_type(t)  # N: Revealed type is "Type[__main__.C]"
+
+[case testNarrowingAny]
+# Regression test: The third reveal type would show z to be
+# typed as Any, despite the `isinstance` assertion.
+
+from enum import Enum
+from typing import Any
+
+class Foo(Enum):
+    A = 1
+    B = 2
+    C = 3
+
+z: Any
+
+assert isinstance(z, Foo)
+reveal_type(z)  # N: Revealed type is "__main__.Foo"
+
+if z is Foo.A:
+    reveal_type(z)  # N: Revealed type is "Literal[__main__.Foo.A]"
+reveal_type(z)  # N: Revealed type is "__main__.Foo"
+
+q: Any
+
+assert isinstance(q, (tuple, list))
+reveal_type(q)  # N: Revealed type is "Union[builtins.tuple[Any], builtins.list[Any]]"
+
+if isinstance(q, tuple):
+    reveal_type(q)  # N: Revealed type is "builtins.tuple[Any]"
+reveal_type(q)  # N: Revealed type is "Union[builtins.tuple[Any], builtins.list[Any]]"
+
+[builtins fixtures/isinstancelist.pyi]
